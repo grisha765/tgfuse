@@ -4,6 +4,7 @@ class Config:
     log_level: str = "INFO"
     tg_id: str = ''
     tg_hash: str = ''
+    cache: bool = False
     chat_id: int = 0
 
     @classmethod
@@ -12,12 +13,10 @@ class Config:
             env_value = os.getenv(key.upper())
             if env_value is not None:
                 current_value = getattr(cls, key)
-                if isinstance(current_value, int):
+                if isinstance(current_value, bool):
+                    setattr(cls, key, bool(env_value) in ('true', 'True', '1', 'yes'))
+                elif isinstance(current_value, int):
                     setattr(cls, key, int(env_value))
-                elif isinstance(current_value, float):
-                    setattr(cls, key, float(env_value))
-                elif isinstance(current_value, list):
-                    setattr(cls, key, env_value.split(","))
                 else:
                     setattr(cls, key, env_value)
 

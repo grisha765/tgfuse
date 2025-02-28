@@ -12,7 +12,7 @@ from tgfuse.config import logging_config
 log = logging_config.setup_logging(__name__)
 
 class TelegramFS(pyfuse3.Operations):
-    def __init__(self, client, chat_id: int, read_only: bool, cache_enabled: bool = True):
+    def __init__(self, client, chat_id: int, read_only: bool, cache_enabled: bool):
         super().__init__()
         self._tg_client = client
         self._chat_id = chat_id
