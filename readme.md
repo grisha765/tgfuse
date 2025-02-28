@@ -28,6 +28,15 @@ python -m venv .venv
     ```
     - *if something goes wrong, use it: `fusermount -u /path/to/mount`*
 
+- Other working env's:
+    ```env
+    LOG_LEVEL="INFO"
+    TG_ID="your_telegram_api_id"
+    TG_HASH="your_telegram_api_hash"
+    CHAT_ID="your_channel_id"
+    CACHE="True"
+    ```
+
 ### Features
 
 - Mount a Telegram chat/channel as a local directory using pyfuse3.
@@ -35,6 +44,7 @@ python -m venv .venv
 - Automatic synchronization: Periodically checks for new/removed files in the Telegram chat and updates the mounted filesystem accordingly.
 - Lazy downloads: Files are only downloaded from Telegram when they are opened/read.
 - On-demand uploads: When creating or modifying files, they are uploaded back to the Telegram chat.
+- Сustomizable cache: enable or disable caching in RAM.
 
 ### Disclaimer
 
