@@ -1,0 +1,15 @@
+[project]
+name = "tgfuse"
+version = "0.1.0"
+description = "Tg UserBot that allows you to mount a telegram channel as a drive in linux using fuse."
+readme = "readme.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pyfuse3>=3.4.0",
+    "pyrofork>=2.3.58",
+    "tgcrypto-pyrofork>=1.2.7",
+]
+
+[tool.pyright]
+venvPath = '.'
+venv = '.venv'
