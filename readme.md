@@ -1,6 +1,6 @@
 # tgfuse
 
-TelegramFS `tgfuse` is a FUSE-based filesystem that allows you to mount a Telegram chat `group or channel` as a local directory on your machine. You can then browse, open, and `optionally` write files directly to Telegram, as if they were stored locally on your disk.
+TelegramFS `tgfuse` is a FUSE-based filesystem that allows you to mount a Telegram chat `channel` as a local directory on your machine. You can then browse, open, and `optionally` write files directly to Telegram, as if they were stored locally on your disk.
 
 ### Initial Setup
 
