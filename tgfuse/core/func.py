@@ -1,4 +1,4 @@
-from pyrogram.enums import MessagesFilter
+from pyrogram.enums import MessagesFilter, ChatType
 
 from tgfuse.config import logging_config
 log = logging_config.setup_logging(__name__)
@@ -13,9 +13,9 @@ async def test_write_permission(client, chat_id: int) -> bool:
         return False
 
 
-async def gather_all_docs(app, chat_id: int):
+async def gather_all_docs(client, chat_id: int):
     docs = []
-    async for msg in app.search_messages(chat_id, filter=MessagesFilter.DOCUMENT):
+    async for msg in client.search_messages(chat_id, filter=MessagesFilter.DOCUMENT):
         if not msg.document:
             continue
         m_id = msg.id
@@ -26,6 +26,14 @@ async def gather_all_docs(app, chat_id: int):
         t = int(msg.date.timestamp())
         docs.append((m_id, f_id, fname_b, size, t))
     return docs
+
+
+async def is_channel(client, chat_id: int) -> bool:
+    try:
+        chat = await client.get_chat(chat_id)
+        return chat.type == ChatType.CHANNEL
+    except Exception as e:
+        return False
 
 if __name__ == "__main__":
     raise RuntimeError("This module should be run only via main.py")
