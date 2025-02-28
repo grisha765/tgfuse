@@ -168,7 +168,6 @@ class TelegramFS(pyfuse3.Operations):
             log.debug(f"Downloaded {len(f['data'])} bytes for inode={inode}.")
 
     async def _upload_existing_file(self, inode: int):
-        """Immediate re-upload for an existing doc if changed."""
         f = self._files[inode]
         old_mid = f['message_id']
         if old_mid:
@@ -199,18 +198,26 @@ class TelegramFS(pyfuse3.Operations):
             log.debug(f"Re-upload => inode={inode}, msg_id={msg.id}")
         except Exception as e:
             log.error(f"Re-upload failed inode={inode}: {e}")
+        finally:
+            # If the file is still not open by the time we finish, 
+            # we can discard its data from memory.
+            if f['refcount'] == 0:
+                f['data'].clear()
 
-    async def _delayed_upload_new_file(self, inode: int, delay_s: int=5):
-        """Wait 5s => if still present => upload if new."""
+    async def _delayed_upload_new_file(self, inode: int, delay_s: int = 5):
         log.debug(f"Inode={inode} => new => delay {delay_s}s.")
         await asyncio.sleep(delay_s)
 
+        # Check if the file is still present (it might have been deleted).
         if inode not in self._files:
             log.debug(f"Inode={inode} unlinked before upload => skip.")
             return
+
         f = self._files[inode]
-        if f['file_id'] is not None:
-            log.debug(f"Inode={inode} no longer new => skip delayed upload.")
+
+        # Maybe user appended more data or re-opened it, or it's no longer dirty
+        if not f['dirty'] or f['file_id'] is not None:
+            log.debug(f"Inode={inode} no longer new or not dirty => skip delayed upload.")
             return
 
         size = len(f['data'])
@@ -233,7 +240,14 @@ class TelegramFS(pyfuse3.Operations):
             log.debug(f"Delayed upload => inode={inode}, msg_id={msg.id}")
         except Exception as e:
             log.error(f"Delayed upload failed inode={inode}: {e}")
+        finally:
+            # Upload is finished. If file is still closed, discard the data.
+            # (If the user reopened it in the meantime, refcount > 0, so keep data.)
+            if inode in self._files:
+                if f['refcount'] == 0:
+                    f['data'].clear()
 
+        # Cleanup the task from the dictionary
         self._delayed_upload_tasks.pop(inode, None)
 
     # FUSE ops
@@ -361,29 +375,38 @@ class TelegramFS(pyfuse3.Operations):
         inode = self._fh_to_inode.pop(fh, None)
         if inode is None:
             return
+
         f = self._files[inode]
         f['refcount'] -= 1
         if f['refcount'] < 0:
             f['refcount'] = 0
+
+        # If nobody else holds the file open, see if we need to upload it.
         if f['refcount'] == 0:
+            # Update size in case it changed.
             f['size'] = len(f['data'])
+
             if not f['dirty']:
+                # Nothing to upload => we can discard data immediately.
+                f['data'].clear()
                 return
 
             if self.read_only:
-                # can't upload => do nothing
+                # Read-only FS => cannot upload anyway, just clear.
+                f['data'].clear()
                 return
 
-            # otherwise write mode
+            # Otherwise, we have a dirty file that needs uploading.
             if f['file_id'] is None:
-                # new => delayed upload
+                # New file => schedule delayed upload
                 old_task = self._delayed_upload_tasks.pop(inode, None)
                 if old_task:
                     old_task.cancel()
+
                 t = asyncio.create_task(self._delayed_upload_new_file(inode, 5))
                 self._delayed_upload_tasks[inode] = t
             else:
-                # existing => immediate re-upload
+                # Existing file => immediate re-upload
                 await self._upload_existing_file(inode)
 
     async def read(self, fh, offset, size):
