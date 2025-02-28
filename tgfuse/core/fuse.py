@@ -12,7 +12,7 @@ from tgfuse.config import logging_config
 log = logging_config.setup_logging(__name__)
 
 class TelegramFS(pyfuse3.Operations):
-    def __init__(self, client, chat_id: int, read_only: bool):
+    def __init__(self, client, chat_id: int, read_only: bool, cache_enabled: bool = True):
         super().__init__()
         self._tg_client = client
         self._chat_id = chat_id
@@ -23,6 +23,7 @@ class TelegramFS(pyfuse3.Operations):
 
         self._root_inode = ROOT_INODE
         self._next_inode = 2
+        self._cache_enabled = cache_enabled
 
         # name -> inode
         self._name_to_inode = {}
@@ -199,25 +200,24 @@ class TelegramFS(pyfuse3.Operations):
         except Exception as e:
             log.error(f"Re-upload failed inode={inode}: {e}")
         finally:
-            # If the file is still not open by the time we finish, 
-            # we can discard its data from memory.
-            if f['refcount'] == 0:
+            # If cache is off and file is still closed, clear out the data
+            if f['refcount'] == 0 and not self._cache_enabled:
                 f['data'].clear()
 
     async def _delayed_upload_new_file(self, inode: int, delay_s: int = 5):
         log.debug(f"Inode={inode} => new => delay {delay_s}s.")
         await asyncio.sleep(delay_s)
 
-        # Check if the file is still present (it might have been deleted).
         if inode not in self._files:
             log.debug(f"Inode={inode} unlinked before upload => skip.")
             return
 
         f = self._files[inode]
 
-        # Maybe user appended more data or re-opened it, or it's no longer dirty
+        # Possibly the user re-opened or appended. If it’s not dirty or has file_id,
+        # we skip uploading:
         if not f['dirty'] or f['file_id'] is not None:
-            log.debug(f"Inode={inode} no longer new or not dirty => skip delayed upload.")
+            log.debug(f"Inode={inode} no longer new or not dirty => skip.")
             return
 
         size = len(f['data'])
@@ -241,14 +241,12 @@ class TelegramFS(pyfuse3.Operations):
         except Exception as e:
             log.error(f"Delayed upload failed inode={inode}: {e}")
         finally:
-            # Upload is finished. If file is still closed, discard the data.
-            # (If the user reopened it in the meantime, refcount > 0, so keep data.)
+            # If cache is off and file is still closed, discard data
             if inode in self._files:
-                if f['refcount'] == 0:
+                if f['refcount'] == 0 and not self._cache_enabled:
                     f['data'].clear()
 
-        # Cleanup the task from the dictionary
-        self._delayed_upload_tasks.pop(inode, None)
+            self._delayed_upload_tasks.pop(inode, None)
 
     # FUSE ops
     async def getattr(self, inode, ctx=None) -> EntryAttributes:
@@ -381,22 +379,23 @@ class TelegramFS(pyfuse3.Operations):
         if f['refcount'] < 0:
             f['refcount'] = 0
 
-        # If nobody else holds the file open, see if we need to upload it.
         if f['refcount'] == 0:
-            # Update size in case it changed.
+            # Always update size in case new writes came in
             f['size'] = len(f['data'])
 
+            # 1) If not dirty at all, we can discard immediately (if cache is off).
             if not f['dirty']:
-                # Nothing to upload => we can discard data immediately.
-                f['data'].clear()
+                if not self._cache_enabled:
+                    f['data'].clear()
                 return
 
+            # 2) If read_only, we cannot upload => clear if cache is off.
             if self.read_only:
-                # Read-only FS => cannot upload anyway, just clear.
-                f['data'].clear()
+                if not self._cache_enabled:
+                    f['data'].clear()
                 return
 
-            # Otherwise, we have a dirty file that needs uploading.
+            # 3) Not read-only + dirty => needs upload
             if f['file_id'] is None:
                 # New file => schedule delayed upload
                 old_task = self._delayed_upload_tasks.pop(inode, None)
