@@ -54,6 +54,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/44/66/2c17bae31c906613795711fc78045c285048168919ace2220daa372c7d72/pyaes-1.6.1.tar.gz", hash = "sha256:02c1b1405c38d3c370b085fb952dd8bea3fadcee6411ad99f312cc129c536d8f", size = 28536 }
 
 [[package]]
+name = "pyasynchat"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyasyncore" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8a/fd/aacc6309abcc5a388c66915829cd8175daccac583828fde40a1eea5768e4/pyasynchat-1.0.4.tar.gz", hash = "sha256:3f5333df649e46c56d48c57e6a4b7163fd07f626bfd884e22ef373ab3c3a4670", size = 9747 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/4f/b4a7aa2a35858d40f970bdb63ab3e9deda35d0d2116b9175f929f37d764d/pyasynchat-1.0.4-py3-none-any.whl", hash = "sha256:167feb25d635a01b61338e17e9ab1e3372cd9274005af4083dcda52d51f64a76", size = 7753 },
+]
+
+[[package]]
+name = "pyasyncore"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/25/6e/956e2bc9b47e3310cd524036f506b779a77788c2a1eb732e544240ad346f/pyasyncore-1.0.4.tar.gz", hash = "sha256:2c7a8b9b750ba6260f1e5a061456d61320a80579c6a43d42183417da89c7d5d6", size = 15339 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/46/aaa0999302d7a584a033ec23b6ca21a452cf9c7f6d8dce8d174ac407eb3f/pyasyncore-1.0.4-py3-none-any.whl", hash = "sha256:9e5f6dc9dc057c56370b7a5cdb4c4670fd4b0556de2913ed1f428cd6a5366895", size = 10032 },
+]
+
+[[package]]
 name = "pycparser"
 version = "2.22"
 source = { registry = "https://pypi.org/simple" }
@@ -61,6 +82,16 @@ sdist = { url = "https://files.pythonhosted.org/packages/1d/b2/31537cf4b1ca98883
 wheels = [
     { url = "https://files.pythonhosted.org/packages/13/a3/a812df4e2dd5696d1f351d58b8fe16a405b234ad2886a0dab9183fb78109/pycparser-2.22-py3-none-any.whl", hash = "sha256:c3702b6d3dd8c7abc1afa565d7e63d53a1d0bd86cdc24edd75470f4de499cfcc", size = 117552 },
 ]
+
+[[package]]
+name = "pyftpdlib"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyasynchat" },
+    { name = "pyasyncore" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b4/0c/32bf0a7c88efe147bc3bc6586216d92269d196c59f149b05efa973834946/pyftpdlib-2.0.1.tar.gz", hash = "sha256:ef0d172a82bfae10e2dec222e87533514609d41bf4b0fd0f07e29d4380fb96bf", size = 202285 }
 
 [[package]]
 name = "pyfuse3"
@@ -156,6 +187,7 @@ name = "tgfuse"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "pyftpdlib" },
     { name = "pyfuse3" },
     { name = "pyrofork" },
     { name = "tgcrypto-pyrofork" },
@@ -163,6 +195,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "pyftpdlib", specifier = ">=2.0.1" },
     { name = "pyfuse3", specifier = ">=3.4.0" },
     { name = "pyrofork", specifier = ">=2.3.58" },
     { name = "tgcrypto-pyrofork", specifier = ">=1.2.7" },
