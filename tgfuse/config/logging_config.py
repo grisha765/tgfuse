@@ -1,5 +1,7 @@
 import logging, os
 from tgfuse.config.config import Config
+from pyftpdlib.log import config_logging
+config_logging(level=logging.ERROR, prefix='%(levelname)s: %(module)s: %(message)s')
 
 RESET = "\x1b[0m"
 WHITE = "\x1b[0m"
@@ -39,6 +41,6 @@ def setup_logging(name='my_app', log_file='/tmp/tgfuse.log'):
         file_handler.setLevel(getattr(logging, "DEBUG", logging.INFO))
         logger.addHandler(stream_handler)
         logger.addHandler(file_handler)
-    
+
     return logger
 
