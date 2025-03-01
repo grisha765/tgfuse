@@ -4,6 +4,7 @@ class Config:
     log_level: str = "INFO"
     tg_id: str = ''
     tg_hash: str = ''
+    tg_token: str = ''
     ftp: bool = False
     cache: bool = False
     chat_id: int = 0
