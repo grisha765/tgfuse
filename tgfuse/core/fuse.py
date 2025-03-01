@@ -7,6 +7,7 @@ import pyfuse3.asyncio
 pyfuse3.asyncio.enable()
 
 from pyfuse3 import FUSEError, ROOT_INODE, FileInfo, EntryAttributes
+from typing import Sequence, Tuple
 
 from tgfuse.config import logging_config
 log = logging_config.setup_logging(__name__)
@@ -473,6 +474,29 @@ class TelegramFS(pyfuse3.Operations):
 
     async def mknod(self, *args, **kwargs):
         raise FUSEError(errno.ENOSYS)
+
+    async def flush(self, fh: pyfuse3.FileHandleT) -> None:
+        return
+
+    async def fsync(self, fh: pyfuse3.FileHandleT, datasync: bool) -> None:
+        return
+
+    async def fsyncdir(self, fh: pyfuse3.FileHandleT, datasync: bool) -> None:
+        return
+
+    async def releasedir(self, fh: pyfuse3.FileHandleT) -> None:
+        return
+
+    async def forget(self, inode_list: Sequence[Tuple[pyfuse3.InodeT, int]]) -> None:
+        return
+
+    async def ioctl(self, fh, command, arg, fip, in_buf, out_buf_size) -> bytes:
+        raise FUSEError(errno.ENOTTY)
+
+    async def copy_file_range(
+        self, fh_in, off_in, fh_out, off_out, length, flags
+    ) -> int:
+        raise FUSEError(errno.EOPNOTSUPP)
 
     async def statfs(self, ctx):
         st = pyfuse3.StatvfsData()
