@@ -31,8 +31,16 @@ async def init():
         ftp_thread.start()
 
     api_id = int(api_id)
+    if Config.tg_token:
+        log.info("Start as common bot.")
+        bot_token = Config.tg_token
+        session_name = "tgfs_bot_session"
+    else:
+        log.info("Start as user bot.")
+        bot_token = None
+        session_name = "tgfs_user_session"
 
-    async with Client("tgfs_session", api_id=api_id, api_hash=api_hash) as app:
+    async with Client(session_name, api_id=api_id, api_hash=api_hash, bot_token=bot_token) as app:
         # Check channel
         if not await is_channel(app, chat_id):
             log.error("This chat is not a channel")
