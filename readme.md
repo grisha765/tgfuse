@@ -5,6 +5,10 @@ TelegramFS `tgfuse` is a FUSE-based filesystem that allows you to mount a Telegr
 ### Initial Setup
 
 1. **Clone the repository**: Clone this repository using `git clone`.
+2. **Install fuse3 on your distribution**:
+    - fedora: `sudo dnf install fuse3-devel`
+    - debian: `sudo apt-get install libfuse3-dev`
+    - arch: `sudo pacman -S fuse3`
 2. **Download Dependencies**: Download the required dependencies into the Virtual Environment `venv` using `uv`.
 
 ```shell
@@ -35,6 +39,7 @@ python -m venv .venv
     TG_HASH="your_telegram_api_hash"
     CHAT_ID="your_channel_id"
     CACHE="True"
+    FTP="True" # very unstable, not recommended at the moment
     ```
 
 ### Features
@@ -48,5 +53,5 @@ python -m venv .venv
 
 ### Disclaimer
 
-- **We do not recommend using your personal Telegram account for this project**. There is a potential risk that your account might be flagged, suspended, or otherwise penalized by Telegram `figuratively, you might “get hammered by Pavel Durov”`.
+- **We do not recommend using your personal Telegram account for this project**. There is a potential risk that your account might be flagged, suspended.
 - Use this project `at your own risk`. Respect Telegram’s terms of service and any relevant local laws when storing or distributing content via Telegram channels/groups.
