@@ -14,7 +14,7 @@ class Config:
             if env_value is not None:
                 current_value = getattr(cls, key)
                 if isinstance(current_value, bool):
-                    setattr(cls, key, bool(env_value) in ('true', 'True', '1', 'yes'))
+                    setattr(cls, key, env_value.lower() in ('true', '1', 'yes'))
                 elif isinstance(current_value, int):
                     setattr(cls, key, int(env_value))
                 else:
