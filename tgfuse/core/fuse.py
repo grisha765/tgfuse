@@ -274,9 +274,9 @@ class TelegramFS(pyfuse3.Operations):
         attr = EntryAttributes()
         attr.st_ino = inode
         if self.read_only:
-            attr.st_mode = (stat.S_IFREG | 0o444)  # read-only
+            attr.st_mode = (stat.S_IFREG | 0o444)
         else:
-            attr.st_mode = (stat.S_IFREG | 0o644)  # read/write
+            attr.st_mode = (stat.S_IFREG | 0o644)
         attr.st_uid = os.getuid()
         attr.st_gid = os.getgid()
         attr.st_nlink = 1
@@ -345,7 +345,7 @@ class TelegramFS(pyfuse3.Operations):
         attr = await self.getattr(inode)
         return (fi, attr)
 
-    async def open(self, inode, flags, ctx):
+    async def open(self, inode, flags, ctx) -> FileInfo:
         if inode not in self._files:
             raise FUSEError(errno.ENOENT)
         f = self._files[inode]

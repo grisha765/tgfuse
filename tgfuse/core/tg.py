@@ -1,5 +1,5 @@
 import sys, pyfuse3
-from pyrogram import Client
+from pyrogram.client import Client
 
 from tgfuse.core.fuse import TelegramFS
 from tgfuse.core.fuse import fuse_runner

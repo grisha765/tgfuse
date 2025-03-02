@@ -4,7 +4,7 @@ from pyftpdlib.servers import FTPServer
 from tgfuse.config import logging_config
 log = logging_config.setup_logging(__name__)
 
-def ftp_server(mount_path):
+def ftp_server(mount_path: str):
     authorizer = DummyAuthorizer()
     user = "tgfuse"
     passwd = "1234"
