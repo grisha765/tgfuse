@@ -26,6 +26,9 @@ async def gather_docs_bot(client: Client, chat_id: int) -> list:
         except RPCError as exc:
             log.warning(f"Error while fetching messages in BOT mode: {exc}")
             break
+
+        if not isinstance(messages, list):
+            messages = [messages]
         
         found_any_docs = False
         for msg in messages:
