@@ -1,6 +1,6 @@
 import os, stat, errno, asyncio, time, contextlib
 
-from tgfuse.core.func import gather_all_docs
+from tgfuse.funcs.channel import gather_all_docs
 
 import pyfuse3
 import pyfuse3.asyncio

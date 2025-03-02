@@ -4,7 +4,7 @@ from pyrogram import Client
 from tgfuse.core.fuse import TelegramFS
 from tgfuse.core.fuse import fuse_runner
 
-from tgfuse.core.func import test_write_permission, is_channel
+from tgfuse.funcs.channel import test_write_permission, is_channel
 
 from tgfuse.config.config import Config
 from tgfuse.config import logging_config

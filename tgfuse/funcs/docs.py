@@ -1,9 +1,10 @@
+from pyrogram.client import Client
 from pyrogram.errors import RPCError
 from pyrogram.enums import MessagesFilter
 from tgfuse.config import logging_config
 log = logging_config.setup_logging(__name__)
 
-async def gather_docs_bot(client, chat_id: int):
+async def gather_docs_bot(client: Client, chat_id: int) -> list:
     """
     For normal bots:
       - We can't use client.search_messages()
@@ -54,7 +55,7 @@ async def gather_docs_bot(client, chat_id: int):
     return all_docs
 
 
-async def gather_docs_userbot(client, chat_id: int):
+async def gather_docs_userbot(client: Client, chat_id: int) -> list:
     """
     For user accounts, we can simply call client.search_messages()
     with filter=DOCUMENT and iterate over all results.

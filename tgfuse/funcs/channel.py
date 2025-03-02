@@ -1,10 +1,11 @@
-from tgfuse.core.history import gather_docs_bot, gather_docs_userbot
+from tgfuse.funcs.docs import gather_docs_bot, gather_docs_userbot
 from pyrogram.enums import ChatType
+from pyrogram.client import Client
 
 from tgfuse.config import logging_config
 log = logging_config.setup_logging(__name__)
 
-async def test_write_permission(client, chat_id: int) -> bool:
+async def test_write_permission(client: Client, chat_id: int) -> bool:
     try:
         msg = await client.send_message(chat_id, "Permission test, please ignore.")
         await client.delete_messages(chat_id, msg.id)
@@ -14,7 +15,7 @@ async def test_write_permission(client, chat_id: int) -> bool:
         return False
 
 
-async def gather_all_docs(client, chat_id: int):
+async def gather_all_docs(client: Client, chat_id: int) -> list:
     """
     Gather documents from all messages in `chat_id`.
     Works for both:
@@ -30,7 +31,7 @@ async def gather_all_docs(client, chat_id: int):
         return await gather_docs_userbot(client, chat_id)
 
 
-async def is_channel(client, chat_id: int) -> bool:
+async def is_channel(client: Client, chat_id: int) -> bool:
     try:
         chat = await client.get_chat(chat_id)
         return chat.type == ChatType.CHANNEL
