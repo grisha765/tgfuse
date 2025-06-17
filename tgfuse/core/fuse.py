@@ -1,5 +1,7 @@
 import os, stat, errno, asyncio, time, contextlib
 
+from pyrogram.errors import RPCError, ChatWriteForbidden, MessageDeleteForbidden
+
 from tgfuse.funcs.channel import gather_all_docs
 
 import pyfuse3
@@ -81,7 +83,8 @@ class TelegramFS(pyfuse3.Operations):
                 'timestamp': ts,
                 'data': bytearray(),
                 'dirty': False,
-                'refcount': 0
+                'refcount': 0,
+                'read_only': False
             }
             self._name_to_inode[unique_fname] = inode
             self._msg_id_to_inode[m_id] = inode
@@ -175,8 +178,13 @@ class TelegramFS(pyfuse3.Operations):
         if old_mid:
             try:
                 await self._tg_client.delete_messages(self._chat_id, old_mid)
-            except Exception as e:
-                log.warning(f"Deleting old msg_id={old_mid} failed: {e}")
+            except RPCError as e:
+                log.warning(
+                    "Can't delete msg_id=%s (%s) – mark read‑only.", old_mid, e
+                )
+                f['read_only'] = True
+                f['dirty'] = False
+                return
 
         size = len(f['data'])
         if size == 0:
@@ -198,8 +206,11 @@ class TelegramFS(pyfuse3.Operations):
             f['dirty'] = False
             self._msg_id_to_inode[msg.id] = inode
             log.debug(f"Re-upload => inode={inode}, msg_id={msg.id}")
-        except Exception as e:
-            log.error(f"Re-upload failed inode={inode}: {e}")
+        except RPCError as e:
+            log.error(
+                "Re‑upload failed inode=%s: %s – mark read‑only.", inode, e
+            )
+            f['read_only'] = True
         finally:
             # If cache is off and file is still closed, clear out the data
             if f['refcount'] == 0 and not self._cache_enabled:
@@ -239,8 +250,11 @@ class TelegramFS(pyfuse3.Operations):
             f['dirty'] = False
             self._msg_id_to_inode[msg.id] = inode
             log.debug(f"Delayed upload => inode={inode}, msg_id={msg.id}")
-        except Exception as e:
-            log.error(f"Delayed upload failed inode={inode}: {e}")
+        except RPCError as e:
+            log.error(
+                "Delayed upload failed inode=%s: %s – mark read‑only.", inode, e
+            )
+            f['read_only'] = True
         finally:
             # If cache is off and file is still closed, discard data
             if inode in self._files:
@@ -273,10 +287,8 @@ class TelegramFS(pyfuse3.Operations):
 
         attr = EntryAttributes()
         attr.st_ino = inode
-        if self.read_only:
-            attr.st_mode = (stat.S_IFREG | 0o444)
-        else:
-            attr.st_mode = (stat.S_IFREG | 0o644)
+        is_ro = self.read_only or f.get("read_only", False)
+        attr.st_mode = stat.S_IFREG | (0o444 if is_ro else 0o644)
         attr.st_uid = os.getuid()
         attr.st_gid = os.getgid()
         attr.st_nlink = 1
@@ -345,26 +357,27 @@ class TelegramFS(pyfuse3.Operations):
         attr = await self.getattr(inode)
         return (fi, attr)
 
-    async def open(self, inode, flags, ctx) -> FileInfo:
+    async def open(self, inode: int, flags: int, ctx) -> FileInfo:
         if inode not in self._files:
             raise FUSEError(errno.ENOENT)
-        f = self._files[inode]
 
-        # Check write access
-        accmode = (flags & os.O_ACCMODE)
-        if self.read_only and (accmode == os.O_WRONLY or accmode == os.O_RDWR):
+        f = self._files[inode]
+        accmode = flags & os.O_ACCMODE
+        want_write = accmode in (os.O_WRONLY, os.O_RDWR)
+
+        if (self.read_only or f.get("read_only", False)) and want_write:
             raise FUSEError(errno.EROFS)
 
-        if not self.read_only and (flags & os.O_TRUNC):
-            f['data'].clear()
-            f['size'] = 0
-            f['dirty'] = False
-            f['file_id'] = None
-            f['message_id'] = None
+        if not (self.read_only or f.get("read_only", False)) and flags & os.O_TRUNC:
+            f["data"].clear()
+            f["size"] = 0
+            f["dirty"] = False
+            f["file_id"] = None
+            f["message_id"] = None
 
         await self._download_if_needed(inode)
 
-        f['refcount'] += 1
+        f["refcount"] += 1
         fh = self._next_fh
         self._next_fh += 1
         self._fh_to_inode[fh] = inode
@@ -416,42 +429,49 @@ class TelegramFS(pyfuse3.Operations):
         f = self._files[inode]
         return bytes(f['data'][offset:offset+size])
 
-    async def write(self, fh, offset, data):
-        if self.read_only:
-            raise FUSEError(errno.EROFS)
+    async def write(self, fh: int, offset: int, data: bytes) -> int:
         inode = self._fh_to_inode.get(fh)
         if inode is None:
             raise FUSEError(errno.EBADF)
+
         f = self._files[inode]
-        buf = f['data']
+        if self.read_only or f.get("read_only", False):
+            raise FUSEError(errno.EROFS)
+
+        buf = f["data"]
         end = offset + len(data)
         if offset > len(buf):
-            buf.extend(b"\0"*(offset - len(buf)))
+            buf.extend(b"\0" * (offset - len(buf)))
         buf[offset:end] = data
-        f['dirty'] = True
+        f["dirty"] = True
         return len(data)
 
-    async def unlink(self, parent_inode, name, ctx):
+    async def unlink(self, parent_inode: int, name: bytes, ctx):
         if self.read_only:
             raise FUSEError(errno.EROFS)
+
         if parent_inode != self._root_inode:
             raise FUSEError(errno.ENOTDIR)
+
         inode = self._name_to_inode.get(name)
         if inode is None:
             raise FUSEError(errno.ENOENT)
 
-        # cancel delayed upload
-        t = self._delayed_upload_tasks.pop(inode, None)
-        if t:
-            t.cancel()
-
         f = self._files[inode]
-        old_mid = f['message_id']
+        if f.get("read_only", False):
+            raise FUSEError(errno.EPERM)
+
+        task = self._delayed_upload_tasks.pop(inode, None)
+        if task:
+            task.cancel()
+
+        old_mid = f["message_id"]
         if old_mid:
             try:
                 await self._tg_client.delete_messages(self._chat_id, old_mid)
-            except Exception as e:
-                log.warning(f"Deleting message {old_mid} failed: {e}")
+            except RPCError:
+                f["read_only"] = True
+                raise FUSEError(errno.EPERM)
             self._msg_id_to_inode.pop(old_mid, None)
 
         self._files.pop(inode, None)
